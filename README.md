@@ -49,13 +49,19 @@ ImageUpload::upload($image, $width = null, $height = null, $fit = false, $privat
 
 To add an additional path
 ```php
-ImageUpload::path("additional_path")->upload($image, $width = null, $height = null, $fit = false, $private = false);
+ImageUpload::path("additional_path");
 ```
 
 To give specific name to the uploaded file, if set it will ignore the configuration `random_name`
 
 ```php
-ImageUpload::name("image_name")->upload($image, $width = null, $height = null, $fit = false, $private = false);
+ImageUpload::name("image_name");
+```
+
+To define the format of the image uploaded (e.g. png, jpg, webp, etc..)
+
+```php
+ImageUpload::format("jpg");
 ```
 
 ### Examples
@@ -63,14 +69,19 @@ ImageUpload::name("image_name")->upload($image, $width = null, $height = null, $
 ```php
 use Mindshaker\ImageUpload\Facades\ImageUpload;
 
+$image = $request->file('image');
+
 //Simple upload ($width or $height needs to be specified)
 //It will resize the image to 1920px. It won't upscale
-ImageUpload::upload($request->file('image'), 1920);
+ImageUpload::upload($image, 1920);
 
 //Crop the image to the given dimensions
-ImageUpload::upload($request->file('image'), 512, 512, true);
+ImageUpload::upload($image, 512, 512, true);
+
+//Change the format of the image
+ImageUpload::format("webp")->upload($image, 1920);
 
 //Add aditional path and change name
-ImageUpload::path("posts/{id}")->name("post_name")->upload($request->file('image'), 1920, null);
-//returns something like "posts/1/post_name.jpg"
+ImageUpload::path("posts/{id}")->name("post_name")->format("webp")->upload($image, 1920, null);
+//returns something like "posts/1/post_name.webp"
 ```
