@@ -13,6 +13,7 @@ class ImageUploadManager
     protected $random_name;
     protected $path = "";
     protected $name = "";
+    protected $format;
 
     public function __construct()
     {
@@ -59,6 +60,13 @@ class ImageUploadManager
         return $this;
     }
 
+    public function format($format)
+    {
+        $this->format = $format;
+
+        return $this;
+    }
+
     /**
      * Upload an image
      * @param $image - The image file
@@ -88,7 +96,7 @@ class ImageUploadManager
             }
             if (!$private) {
                 if ($image->getClientOriginalExtension() != "gif") {
-                    $resized_image->save($folder . '/' . $image_name);
+                    $resized_image->save($folder . '/' . $image_name, 90, $this->format);
                 } else {
                     copy($image->getRealPath(), $folder . '/' . $image_name);
                 }
@@ -129,11 +137,16 @@ class ImageUploadManager
      */
     private function generateName($image)
     {
+        $extension = $image->getClientOriginalExtension();
+        if ($this->format) {
+            $extension = $this->format;
+        }
+
         if ($this->name != "") {
-            return $this->name . '.' . $image->getClientOriginalExtension();
+            return $this->name . '.' . $extension;
         } else {
             if ($this->random_name) {
-                return rand() . '.' . $image->getClientOriginalExtension();
+                return rand() . '.' . $extension;
             } else {
                 return $image->getClientOriginalName();
             }
