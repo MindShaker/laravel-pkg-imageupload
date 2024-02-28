@@ -6,7 +6,7 @@ This package makes image upload easy. It uses [Intervention Image](https://image
 Require this package, with [Composer](https://getcomposer.org), in the root directory of your project.
 
 ```bash
-$ composer require mindshaker/imageupload
+$ composer require mindshaker/image-upload
 ```
 
 ## Configuration
