@@ -4,7 +4,9 @@ namespace Mindshaker\ImageUpload;
 
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
-use Intervention\Image\Facades\Image;
+use Intervention\Image\Drivers\Imagick\Driver as ImagickDriver;
+use Intervention\Image\Drivers\Gd\Driver as GdDriver;
+use Intervention\Image\ImageManager;
 
 class ImageUploadManager
 {
@@ -14,6 +16,7 @@ class ImageUploadManager
     protected $path = "";
     protected $name = "";
     protected $format;
+    protected $driver = "imagick"; // "gd" or "imagick
 
     public function __construct()
     {
@@ -72,40 +75,45 @@ class ImageUploadManager
      * @param $image - The image file
      * @param $width - The width of the image
      * @param $height - The height of the image
-     * @param $fit - If the image should be fit
+     * @param $crop - If the image should be crop
      * @param $private - If the image should be private
      */
-    public function upload($image, $width = null, $height = null, $fit = false, $private = false)
+    public function upload($image, $width = null, $height = null, $crop = false, $private = false)
     {
         $folder = $private ? $this->private_path : $this->public_path;
 
         $image_name = "";
         if ($image) {
 
+            $manager = $this->manager();
+
             $image_name = $this->generateName($image);
 
-            $resized_image = Image::make($image->getRealPath());
-            $resized_image->orientate();
-            if ($fit) {
-                $resized_image->fit($width, $height);
-            } else {
-                $resized_image->resize($width, $height, function ($constraint) {
-                    $constraint->aspectRatio();
-                    $constraint->upsize();
-                });
-            }
-            if (!$private) {
-                if ($image->getClientOriginalExtension() != "gif") {
-                    $resized_image->save($folder . '/' . $image_name, 90, $this->format);
-                } else {
-                    copy($image->getRealPath(), $folder . '/' . $image_name);
+            if ($this->driver == "gd") {
+                //if file is gif
+                if ($image->getClientOriginalExtension() == "gif") {
+                    throw new \Exception("Gif images are not supported with GD driver");
                 }
+            }
+            $resized_image = $manager->read($image->getRealPath());
+            if ($crop) {
+                if ($height == null) {
+                    $height = $width;
+                }
+                $resized_image->cover($width, $height);
+            } else {
+                $resized_image->scaleDown($width, $height);
+            }
+
+            if (!$private) {
+                $resized_image->save($folder . '/' . $image_name, 75, $this->format);
+
                 if ($this->path != "") {
                     $image_name = $this->path . "/$image_name";
                 }
             } else {
                 $resized_image->save();
-                Storage::disk('private')->put($this->private_path . "/$image_name", $resized_image->__toString());
+                Storage::disk('private')->put($this->private_path . "/$image_name", (string) $resized_image->encode());
                 if ($this->path != "") {
                     $image_name = $this->path . "/$image_name";
                 }
@@ -113,6 +121,18 @@ class ImageUploadManager
         }
 
         return $image_name;
+    }
+
+    public function manager()
+    {
+        try {
+            $manager = new ImageManager(new ImagickDriver());
+        } catch (\Exception $e) {
+            $manager = new ImageManager(new GdDriver());
+            $this->driver = "gd";
+        }
+
+        return $manager;
     }
 
     /**

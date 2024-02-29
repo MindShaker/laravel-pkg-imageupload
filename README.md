@@ -44,7 +44,7 @@ The upload function returns the image name with additional path if set (see bell
 ```php
 use Mindshaker\ImageUpload\Facades\ImageUpload;
 
-ImageUpload::upload($image, $width = null, $height = null, $fit = false, $private = false);
+ImageUpload::upload($image, $width = null, $height = null, $crop = false, $private = false);
 ```
 
 To add an additional path
@@ -62,6 +62,12 @@ To define the format of the image uploaded (e.g. png, jpg, webp, etc..)
 
 ```php
 ImageUpload::format("jpg");
+```
+
+You can call the method `manager` to return an instance of  `Intervention\Image\ImageManager`
+
+```php
+ImageUpload::manager();
 ```
 
 ### Examples
