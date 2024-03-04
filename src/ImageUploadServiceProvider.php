@@ -14,7 +14,8 @@ class ImageUploadServiceProvider extends ServiceProvider
     {
         $configPath = __DIR__ . '/../config/imageupload.php';
         $this->mergeConfigFrom($configPath, 'imageupload');
-        $this->app->singleton('imageupload', function () {
+
+        $this->app->bind('imageupload', function ($app) {
             return new ImageUploadManager();
         });
     }

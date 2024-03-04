@@ -13,10 +13,16 @@ class ImageUploadManager
     protected $public_path;
     protected $private_path;
     protected $random_name;
+
     protected $path = "";
     protected $name = "";
     protected $format;
+    protected $quality = 75;
+
     protected $driver = "imagick"; // "gd" or "imagick
+    protected $manager;
+    protected $Oimage; //Original Image
+    protected $Eimage; //Edited Image
 
     public function __construct()
     {
@@ -35,6 +41,10 @@ class ImageUploadManager
         $this->random_name = config('imageupload.random_name');
     }
 
+    /**
+     * Set the path of the image
+     * @param $path - The path of the image
+     */
     public function path($path)
     {
         $this->public_path = $this->public_path . '/' . $path;
@@ -56,6 +66,9 @@ class ImageUploadManager
         return $this;
     }
 
+    /**
+     * Set the name of the image
+     */
     public function name($name)
     {
         $this->name = $name;
@@ -63,9 +76,20 @@ class ImageUploadManager
         return $this;
     }
 
+    /**
+     * Set the format of the image
+     * @param $format - The format of the image
+     */
     public function format($format)
     {
         $this->format = $format;
+
+        return $this;
+    }
+
+    public function quality($quality)
+    {
+        $this->quality = $quality;
 
         return $this;
     }
@@ -80,59 +104,54 @@ class ImageUploadManager
      */
     public function upload($image, $width = null, $height = null, $crop = false, $private = false)
     {
-        $folder = $private ? $this->private_path : $this->public_path;
-
         $image_name = "";
         if ($image) {
 
-            $manager = $this->manager();
+            $this->manager($image);
 
-            $image_name = $this->generateName($image);
-
-            if ($this->driver == "gd") {
-                //if file is gif
-                if ($image->getClientOriginalExtension() == "gif") {
-                    throw new \Exception("Gif images are not supported with GD driver");
-                }
-            }
-            $resized_image = $manager->read($image->getRealPath());
             if ($crop) {
                 if ($height == null) {
                     $height = $width;
                 }
-                $resized_image->cover($width, $height);
+                $this->Eimage->cover($width, $height);
             } else {
-                $resized_image->scaleDown($width, $height);
+                $this->Eimage->scaleDown($width, $height);
             }
 
-            if (!$private) {
-                $resized_image->save($folder . '/' . $image_name, 75, $this->format);
-
-                if ($this->path != "") {
-                    $image_name = $this->path . "/$image_name";
-                }
-            } else {
-                $resized_image->save();
-                Storage::disk('private')->put($this->private_path . "/$image_name", (string) $resized_image->encode());
-                if ($this->path != "") {
-                    $image_name = $this->path . "/$image_name";
-                }
-            }
+            $image_name = $this->save($private);
         }
 
         return $image_name;
     }
 
-    public function manager()
+    /**
+     * Save the image create by the manager
+     * @param $private - If the image should be private
+     */
+    public function save($private = false)
     {
-        try {
-            $manager = new ImageManager(new ImagickDriver());
-        } catch (\Exception $e) {
-            $manager = new ImageManager(new GdDriver());
-            $this->driver = "gd";
+        $folder = $private ? $this->private_path : $this->public_path;
+
+        $image_name = $this->generateName();
+        if (!$private) {
+            $this->Eimage->save($folder . '/' . $image_name, $this->quality, $this->format);
+
+            if ($this->path != "") {
+                $image_name = $this->path . "/$image_name";
+            }
+        } else {
+            $this->Eimage->save();
+            try {
+                Storage::disk('private')->put($this->private_path . "/$image_name", (string) $this->Eimage->encode());
+            } catch (\Exception $e) {
+                throw new \Exception("The private disk is not configured");
+            }
+            if ($this->path != "") {
+                $image_name = $this->path . "/$image_name";
+            }
         }
 
-        return $manager;
+        return $image_name;
     }
 
     /**
@@ -152,12 +171,61 @@ class ImageUploadManager
     }
 
     /**
+     * Create an instance of the image manager
+     * @param $image - The image file
+     */
+    public function manager($image)
+    {
+        if ($this->manager) {
+            return $this;
+        }
+
+        try {
+            $manager = new ImageManager(new ImagickDriver());
+        } catch (\Exception $e) {
+            $manager = new ImageManager(new GdDriver());
+            $this->driver = "gd";
+        }
+
+        if ($this->driver == "gd") {
+            if ($image->getClientOriginalExtension() == "gif") {
+                throw new \Exception("Gif images are not supported with GD driver");
+            }
+        }
+
+        $this->manager = $manager;
+        $this->Eimage = $manager->read($image->getRealPath());
+        $this->Oimage = $image;
+
+        return $this;
+    }
+
+    /**
+     * Call the methods of the image manager
+     * @param $method - The method name
+     * @param $parameters - The method parameters
+     */
+    public function __call($method, $parameters)
+    {
+        if (!$this->Eimage || !$this->manager) {
+            throw new \Exception("You must call the manager method first");
+        }
+        if (method_exists($this->Eimage, $method)) {
+            $this->Eimage = $this->Eimage->$method(...$parameters);
+            return $this;
+        }
+
+        throw new \BadMethodCallException("Method [$method] does not exist.");
+    }
+
+    /**
      * Generate a name for the image based on the configuration 
      * @param $image - The image file
      */
-    private function generateName($image)
+    private function generateName()
     {
-        $extension = $image->getClientOriginalExtension();
+
+        $extension = $this->Oimage->getClientOriginalExtension();
         if ($this->format) {
             $extension = $this->format;
         }
@@ -168,7 +236,7 @@ class ImageUploadManager
             if ($this->random_name) {
                 return rand() . '.' . $extension;
             } else {
-                return $image->getClientOriginalName();
+                return $this->Oimage->getClientOriginalName();
             }
         }
     }

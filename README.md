@@ -64,13 +64,21 @@ To define the format of the image uploaded (e.g. png, jpg, webp, etc..)
 ImageUpload::format("jpg");
 ```
 
-You can call the method `manager` to return an instance of  `Intervention\Image\ImageManager`
+To define the quality of the image, default 75.
 
 ```php
-ImageUpload::manager();
+ImageUpload::quality(75);
 ```
 
-### Examples
+You can delete images by calling the method `delete($image, $private = false)` where `$image` is the name returned from the `upload()` method
+
+```php
+$image_name = ImageUpload::upload($image, 1920);
+
+ImageUpload::delete($image_name);
+```
+
+### Basic Examples
 
 ```php
 use Mindshaker\ImageUpload\Facades\ImageUpload;
@@ -90,4 +98,22 @@ ImageUpload::format("webp")->upload($image, 1920);
 //Add aditional path and change name
 ImageUpload::path("posts/{id}")->name("post_name")->format("webp")->upload($image, 1920, null);
 //returns something like "posts/1/post_name.webp"
+```
+
+## Adavanced Usage
+
+If you want more than just resizing and cropping the images, you can call the method `manager()` and edit the image like it's an [Intervention Image](https://image.intervention.io/v3). This is a substitute to the upload method, all the other methods still work (Like `path()`, `name()` and `format()`). After editing, to upload the image you can call the method `save()` to upload the image to the specified path and format.
+
+```php
+ImageUpload::manager($image);
+```
+
+### Example
+
+```php
+use Mindshaker\ImageUpload\Facades\ImageUpload;
+
+$image = $request->file('image');
+
+ImageUpload::manager($image)->pad(512, 512, 'ccc')->format("png")->save();
 ```
