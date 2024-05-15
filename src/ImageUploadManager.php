@@ -236,7 +236,7 @@ class ImageUploadManager
             if ($this->random_name) {
                 return rand() . '.' . $extension;
             } else {
-                return $this->Oimage->getClientOriginalName();
+                return pathinfo($this->Oimage->getClientOriginalName(), PATHINFO_FILENAME) . '.' . $extension;
             }
         }
     }
