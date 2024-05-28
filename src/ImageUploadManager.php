@@ -134,7 +134,7 @@ class ImageUploadManager
 
         $image_name = $this->generateName();
         if (!$private) {
-            $this->Eimage->save($folder . '/' . $image_name, $this->quality, $this->format);
+            $this->Eimage->save($folder . '/' . $image_name, quality: $this->quality);
 
             if ($this->path != "") {
                 $image_name = $this->path . "/$image_name";
